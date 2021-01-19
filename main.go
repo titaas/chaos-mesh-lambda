@@ -2,17 +2,16 @@ package main
 
 import (
 	"context"
-    "fmt"
-    "time"
-    "encoding/json"
+	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-    "github.com/aws/aws-sdk-go/service/codepipeline"
-    
-    "github.com/appleboy/easyssh-proxy"
-    
+	"github.com/aws/aws-sdk-go/service/codepipeline"
+
+	"github.com/appleboy/easyssh-proxy"
 )
 
 // Local application variables
@@ -40,7 +39,7 @@ type TiDBClusterVar struct {
 	TiKV2InstanceID string `json:"TiKV2InstanceID"`
 }
 
-func StartChaos(instanceid string) (string, error){
+func StartChaos(instanceid string) (string, error) {
 	ssh := &easyssh.MakeConfig{
 		User:   "ec2-user",
 		Server: "hostname",
@@ -56,10 +55,10 @@ You key here, also can
 
 		// Parse PrivateKey With Passphrase
 		Passphrase: "",
-    }
+	}
 	// Call Run method with command you want to run on remote server.
 	// trigger Chaos Mesh to run chaos, we can later using client go to replace. This is ugly
-	stdout, _, _, err := ssh.Run(fmt.Sprintf("sh run.sh %s",instanceid), 60*time.Second)
+	stdout, _, _, err := ssh.Run(fmt.Sprintf("sh run.sh %s", instanceid), 60*time.Second)
 	// Handle errors
 	if err != nil {
 		return "", err
@@ -71,9 +70,9 @@ You key here, also can
 
 func HandleRequest(ctx context.Context, event *CodePipelineEvent) (string, error) {
 	// Start a new CodePipeline service
-    pipeline := codepipeline.New(awsSession)
-    
-    params := event.Job.Data.ActionConfiguration.Configuration.UserParameters
+	pipeline := codepipeline.New(awsSession)
+
+	params := event.Job.Data.ActionConfiguration.Configuration.UserParameters
 	v := &TiDBClusterVar{}
 	err := json.Unmarshal([]byte(params), &v)
 	if err != nil {
@@ -82,18 +81,18 @@ func HandleRequest(ctx context.Context, event *CodePipelineEvent) (string, error
 
 	input := &codepipeline.PutJobSuccessResultInput{
 		JobId: aws.String(event.Job.ID),
-    }
-    
-    out, err := StartChaos(v.TiKV2InstanceID)
-    if err != nil {
-        return "", err
-    }
+	}
+
+	out, err := StartChaos(v.TiKV2InstanceID)
+	if err != nil {
+		return "", err
+	}
 
 	output, err := pipeline.PutJobSuccessResult(input)
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("Hello !\n %s\n%s \n%s", event.Job.ID,output.String(), out), nil
+	return fmt.Sprintf("Hello !\n %s\n%s \n%s", event.Job.ID, output.String(), out), nil
 }
 
 func main() {
